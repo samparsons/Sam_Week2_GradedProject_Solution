@@ -162,7 +162,7 @@ async function main() {
     dotenv.config();
     await mongoose.connect(process.env.MONGODB_URI);
     console.log("Connected successfully to database");
-    await runQueries();
+   //node  await runQueries();
   } catch (error) {
     console.error("Failed to connect to database:", error);
     process.exit(1);
