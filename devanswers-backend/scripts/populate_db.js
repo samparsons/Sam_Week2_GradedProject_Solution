@@ -1,19 +1,58 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import User from '../models/User.js';
 import Question from '../models/Question.js';
 import Answer from '../models/Answer.js';
 
 import { users, questions, answers } from './seed-data.js';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+
+const CONNECT_OPTIONS = {
+  serverSelectionTimeoutMS: 10000,
+  connectTimeoutMS: 10000,
+};
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function connectToDatabase() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('MongoDB connected for seeding');
+    if (!process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI is not set. Expected it in .env.local at the project root.');
+    }
+
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        await mongoose.connect(process.env.MONGODB_URI, CONNECT_OPTIONS);
+        console.log('MongoDB connected for seeding');
+        return;
+      } catch (error) {
+        const isLastAttempt = attempt === maxAttempts;
+        const errorCode = error?.cause?.code || error?.code;
+
+        if (isLastAttempt) {
+          throw error;
+        }
+
+        console.warn(
+          `MongoDB connection attempt ${attempt}/${maxAttempts} failed (${errorCode || 'unknown'}). Retrying...`,
+        );
+        await sleep(1500 * attempt);
+      }
+    }
   } catch (err) {
     console.error('MongoDB connection error:', err);
+
+    if (err?.cause?.code === 'ETIMEDOUT' || err?.code === 'ETIMEDOUT') {
+      console.error('Troubleshooting tips: check internet stability, VPN/proxy/firewall rules, and Atlas Network Access/IP allowlist.');
+    }
+
     process.exit(1);
   }
 }

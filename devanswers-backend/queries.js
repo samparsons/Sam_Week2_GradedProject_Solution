@@ -3,6 +3,11 @@ import User from "./models/User.js";
 import Question from "./models/Question.js";
 import Answer from "./models/Answer.js";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function query1() {
   // Write code for Query 1 here
@@ -159,7 +164,12 @@ const printHeader = (num, title) => {
 
 async function main() {
   try {
-    dotenv.config();
+    dotenv.config({ path: path.join(__dirname, ".env.local") });
+
+    if (!process.env.MONGODB_URI) {
+      throw new Error("MONGODB_URI is not set. Expected it in .env.local at the project root.");
+    }
+
     await mongoose.connect(process.env.MONGODB_URI);
     console.log("Connected successfully to database");
    //node  await runQueries();
